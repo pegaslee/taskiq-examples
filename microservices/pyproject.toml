@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "app"
+version = "0.1.0"
+description = ""
+authors = ["Pavel Kirilin <win10@list.ru>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+taskiq = "^0"
+taskiq-redis = "^1"
+taskiq-fastapi = "^0"
+fastapi = "^0"
+uvicorn = "^0"
+nats-py = "^2.10.0"
+
+[tool.poetry.group.dev.dependencies]
+taskiq = { version = "^0", extras = ["reload"] }
+black = "^25"
+isort = "^6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

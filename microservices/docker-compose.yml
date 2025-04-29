@@ -1,0 +1,81 @@
+services:
+  app1:
+    &app1
+    image: app:latest
+    build: .
+    ports:
+      - 8000:8000
+    restart: always
+    environment:
+      SERVICE_NAME: "user"
+      NATS_URLS: nats://nats:4222/
+      REDIS_URL: redis://valkey/
+      STREAM_NAME: "meme-org"
+      SUBJECTS: "meme-org.>"
+      CONSUMER_NAME: "app1"
+      FILTER_SUBJECTS: "meme-org.app1.>"
+    depends_on:
+      nats:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  app2: 
+    &app2
+    image: app:latest
+    build: .
+    ports:
+      - 9000:8000
+    restart: always
+    environment:
+      SERVICE_NAME: "meme"
+      NATS_URLS: nats://nats:4222/
+      REDIS_URL: redis://valkey/
+      STREAM_NAME: "meme-org"
+      SUBJECTS: "meme-org.>"
+      CONSUMER_NAME: "app2"
+      FILTER_SUBJECTS: "meme-org.app2.>,meme-org.app1.user.create"
+    depends_on:
+      nats:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  app1-tkq:
+    <<: *app1
+    ports: []
+    command: [ taskiq, worker, -fsd, app.__main__:broker, -w, "1", --max-fails, "1"]
+
+  app2-tkq:
+    <<: *app2
+    ports: []
+    command: [ taskiq, worker, -fsd, app.__main__:broker, -w, "1", --max-fails, "1"]
+
+  nats:
+    image: nats:2.10-alpine
+    hostname: nats
+    command:
+      - "-js"
+      - "-m"
+      - "8222"
+    healthcheck:
+      test:
+        - "CMD"
+        - "sh"
+        - "-c"
+        - "wget http://localhost:8222/healthz -q -O - | xargs | grep ok || exit 1"
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  valkey:
+    image: bitnami/valkey:8.0.2
+    hostname: valkey
+    restart: always
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+    healthcheck:
+      test: valkey-cli ping
+      interval: 1s
+      timeout: 3s
+      retries: 50
